@@ -1,0 +1,535 @@
+{
+  "name": "buddingkids_new order",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "woocommerce-order",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1088,
+        -48
+      ],
+      "id": "0bc894cf-69f1-4dca-9fea-82806be6a804",
+      "name": "Webhook",
+      "webhookId": "251e219d-46ec-4e0d-bad7-4544d87ed184"
+    },
+    {
+      "parameters": {
+        "chatId": "1066365808",
+        "text": "=🎉 New Order Received!\n\n🆔 Order ID: {{$node[\"Parse Order\"].json[\"orderId\"]}}\n👤 Name: {{$node[\"Parse Order\"].json[\"customerName\"]}}\n📞 Phone: {{$node[\"Parse Order\"].json[\"phone\"]}}\n📧 Email: {{$node[\"Parse Order\"].json[\"email\"]}}\n💰 Total: ₹{{$node[\"Parse Order\"].json[\"total\"]}}\n💳 Payment: {{$node[\"Parse Order\"].json[\"payment\"]}}\n📍 Address: {{$node[\"Parse Order\"].json[\"address\"]}}\n📦 Products: {{$node[\"Parse Order\"].json[\"products\"]}}\n\n",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -416,
+        -48
+      ],
+      "id": "cb593aad-afab-47e4-8e80-fe9eafea33c1",
+      "name": "Send a text message",
+      "webhookId": "94338f68-d7c7-4a11-b8ac-9fc77266c216",
+      "credentials": {
+        "telegramApi": {
+          "id": "TFPXk4Zc7eYHFXBo",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const order = items[0].json;\n\n// ❗ STOP workflow if payment is NOT completed\nconst paidStatuses = [\"processing\", \"completed\"];\nif (!paidStatuses.includes(order.status)) {\n  return []; // exit — do not continue workflow\n}\n\nfunction s(v){ return v === undefined || v === null ? '' : v; }\n\n// Build full shipping address\nconst shippingAddress = [\n  s(order.shipping?.company),\n  (s(order.shipping?.first_name) + \" \" + s(order.shipping?.last_name)).trim(),\n  s(order.shipping?.address_1),\n  s(order.shipping?.address_2),\n  s(order.shipping?.city),\n  s(order.shipping?.state),\n  s(order.shipping?.postcode)\n].filter(p => p).join(\", \");\n\n// Order date\nconst orderDate = order.date_created \n  ? new Date(order.date_created).toISOString().split(\"T\")[0] \n  : new Date().toISOString().split(\"T\")[0];\n\nreturn [{\n  json: {\n    orderId: s(order.id),\n    customerName: (s(order.billing?.first_name) + \" \" + s(order.billing?.last_name)).trim(),\n    phone: s(order.billing?.phone),\n    email: s(order.billing?.email),\n    address: shippingAddress,\n    city: s(order.shipping?.city),\n    state: s(order.shipping?.state),\n    products: (order.line_items || []).map(it => `${it.name} x${it.quantity || 1}`).join('; '),\n    total: s(order.total),\n    payment: s(order.payment_method_title) || s(order.payment_method),\n    orderDate,\n    raw: order\n  }\n}];\n\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -768,
+        -48
+      ],
+      "id": "c6ad3eb9-d9fe-45c2-ac51-cae8da15a7a3",
+      "name": "Parse Order"
+    },
+    {
+      "parameters": {
+        "sendTo": "sharon.inbarani@gmail.com, buddingkids14@gmail.com",
+        "subject": "=🎉 New Order Received! #{{$node[\"Parse Order\"].json[\"orderId\"]}}\n\n\n",
+        "emailType": "text",
+        "message": "=🎉 New Order Received!\n\n🆔 Order ID: {{$node[\"Parse Order\"].json[\"orderId\"]}}\n👤 Name: {{$node[\"Parse Order\"].json[\"customerName\"]}}\n📞 Phone: {{$node[\"Parse Order\"].json[\"phone\"]}}\n📧 Email: {{$node[\"Parse Order\"].json[\"email\"]}}\n💰 Total: ₹{{$node[\"Parse Order\"].json[\"total\"]}}\n💳 Payment: {{$node[\"Parse Order\"].json[\"payment\"]}}\n📍 Address: {{$node[\"Parse Order\"].json[\"address\"]}}\n📦 Products: {{$node[\"Parse Order\"].json[\"products\"]}}\n\n\n",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -240,
+        -48
+      ],
+      "id": "734870f0-dd45-4f51-a784-527e37c48201",
+      "name": "Send a message",
+      "webhookId": "24893992-a8ef-4c4f-ab7a-ea4988000ede",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "eeu9HZfWJ9XrV0RL",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1w75l6-h2WY4lHeN_F3T6FYLRIj9mxI2MpHmJ8LLLtUE",
+          "mode": "list",
+          "cachedResultName": "Budding Kids order",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1w75l6-h2WY4lHeN_F3T6FYLRIj9mxI2MpHmJ8LLLtUE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1382016532,
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1w75l6-h2WY4lHeN_F3T6FYLRIj9mxI2MpHmJ8LLLtUE/edit#gid=1382016532"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "=Shipping Status",
+              "lookupValue": "Dispatched"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -384,
+        224
+      ],
+      "id": "9608adaa-e93e-4793-aae0-be70f74d06f5",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "VTjKBGHNtDeScs88",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -640,
+        224
+      ],
+      "id": "40d9f922-b0cd-481f-aa6e-622b709f29e9",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.Email }}",
+        "subject": "=Your BuddingKids Order #{{$json[\"Order ID\"]}} is Shipped",
+        "emailType": "text",
+        "message": "=Hi {{$json[\"Customer Name\"]}},\n\nGood news! Your order {{$json[\"Order ID\"]}} has been shipped.  \n\n📦 Courier: {{$json[\"Courier\"]}}  \n🔢 Tracking No: {{$json[\"Tracking No\"]}}  \n\nYou can track your shipment directly on the courier website.  \n\nThank you for trusting BuddingKids 💜  \n— Team BuddingKids\n",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -176,
+        224
+      ],
+      "id": "6a34ee9a-c02e-4a23-ab2e-cbb6ac3ecefe",
+      "name": "Send a message1",
+      "webhookId": "3a402222-d8b4-47ba-9434-785c33f30a37",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "eeu9HZfWJ9XrV0RL",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://buddingkids.com/wp-json/wc/v3/orders/{{$json[\"id\"]}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -928,
+        -48
+      ],
+      "id": "cc5a884d-920e-4f88-99ac-19df4414774a",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "Kxk4qZqoC58R1tSA",
+          "name": "bkcredential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1w75l6-h2WY4lHeN_F3T6FYLRIj9mxI2MpHmJ8LLLtUE",
+          "mode": "list",
+          "cachedResultName": "Budding Kids order",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1w75l6-h2WY4lHeN_F3T6FYLRIj9mxI2MpHmJ8LLLtUE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1382016532,
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1w75l6-h2WY4lHeN_F3T6FYLRIj9mxI2MpHmJ8LLLtUE/edit#gid=1382016532"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Order ID": "={{$node[\"Parse Order\"].json[\"orderId\"]}}",
+            "Customer Name ": "={{$node[\"Parse Order\"].json[\"customerName\"]}}",
+            "Phone": "={{$node[\"Parse Order\"].json[\"phone\"]}}",
+            "Email": "={{$node[\"Parse Order\"].json[\"email\"]}}",
+            "Address": "={{$node[\"Parse Order\"].json[\"address\"]}}",
+            " Products": "={{$node[\"Parse Order\"].json[\"products\"]}}",
+            " Total": "={{$node[\"Parse Order\"].json[\"total\"]}}",
+            "Payment": "={{$node[\"Parse Order\"].json[\"payment\"]}}",
+            "Order Date": "={{$node[\"Parse Order\"].json[\"orderDate\"]}}",
+            "Order status": "={{$node[\"Parse Order\"].json[\"raw\"].status}}",
+            "City ": "={{$node[\"Parse Order\"].json[\"city\"]}}",
+            "State": "={{$node[\"Parse Order\"].json[\"state\"]}}",
+            "Shipping Status": "="
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Customer Name ",
+              "displayName": "Customer Name ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Address",
+              "displayName": "Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": " Products",
+              "displayName": " Products",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": " Total",
+              "displayName": " Total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Payment",
+              "displayName": "Payment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Order Date",
+              "displayName": "Order Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Order status",
+              "displayName": "Order status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Courier",
+              "displayName": "Courier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tracking No",
+              "displayName": "Tracking No",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Shipping Status",
+              "displayName": "Shipping Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "City ",
+              "displayName": "City ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "State",
+              "displayName": "State",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tracking Sent",
+              "displayName": "Tracking Sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Tracking sent date",
+              "displayName": "Tracking sent date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -592,
+        -48
+      ],
+      "id": "c76ca095-9c95-4a15-bd7e-bc7eb6613d8d",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "VTjKBGHNtDeScs88",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $node[\"Parse Order\"].json[\"email\"] }}",
+        "subject": "=Thank you for your order #{{$node[\"Parse Order\"].json[\"orderId\"]}}",
+        "message": "=Hi {{$node[\"Parse Order\"].json[\"customerName\"]}},<br><br>\n\nThank you for placing your order with <strong>BuddingKids!</strong> 🎉<br><br>\n\n<strong>🆔 Order ID:</strong> {{$node[\"Parse Order\"].json[\"orderId\"]}}<br>\n<strong>📦 Products:</strong> {{$node[\"Parse Order\"].json[\"products\"]}}<br>\n<strong>💰 Total:</strong> ₹{{$node[\"Parse Order\"].json[\"total\"]}}<br>\n<strong>💳 Payment:</strong> {{$node[\"Parse Order\"].json[\"payment\"]}}<br>\n<strong>📍 Shipping Address:</strong> {{$node[\"Parse Order\"].json[\"address\"]}}<br><br>\n\nWe’ll notify you once your package has been shipped.<br><br>\n\n<hr>\n\n<strong>🎁 FREE Bonus for You</strong><br>\nUse code <strong>FREEACCESS2025</strong> to download your 100-page worksheet & DIY Activity book.<br><br>\n\n👉 <a href=\"https://buddingkids.com/product/phonics-math-colouring-shapes-and-animal-exploration/\">Click here to download (7 files)</a><br><br>\n\nPlease download before <strong>Nov 30th</strong>.<br><br>\n\n<hr>\n\nOnce you receive your parcel, we’d love your review 🌟<br><br>\n\n💜 <strong>Team BuddingKids</strong>\n",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -64,
+        -48
+      ],
+      "id": "d20a0d27-cef1-40d9-bbab-26cf61850e24",
+      "name": "Send a message2",
+      "webhookId": "fd463fa2-ef48-408b-b868-66fc1678614d",
+      "alwaysOutputData": false,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "eeu9HZfWJ9XrV0RL",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Order": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Send a message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Parse Order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "8089f1c4-4861-4ba6-9511-90d8e1b282b6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "43c7b19691f51a3f88ee9b629dd445f165272a5bfe2c0892692a40f0c3bdd981"
+  },
+  "id": "JrW84dPYME7JLmSz",
+  "tags": []
+}
