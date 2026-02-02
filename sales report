@@ -1,0 +1,204 @@
+{
+  "name": "budding kids dail sales report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -432,
+        0
+      ],
+      "id": "a48c28de-4c71-4d8b-927c-2d056bc8a9d2",
+      "name": "Schedule Trigger",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "resource": "order",
+        "operation": "getAll",
+        "returnAll": true,
+        "options": {
+          "status": "completed"
+        }
+      },
+      "type": "n8n-nodes-base.wooCommerce",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        0
+      ],
+      "id": "7871d5b4-20cf-4bc2-a815-f3aed725c36a",
+      "name": "Get many orders",
+      "alwaysOutputData": true,
+      "credentials": {
+        "wooCommerceApi": {
+          "id": "I64XI3CnemjPhOoK",
+          "name": "WooCommerce account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 🧠 Collect WooCommerce orders from previous node\nconst orders = $input.all().flatMap(item => item.json);\n\n// 🕒 Date helpers\nconst now = new Date();\nconst startOfYesterday = new Date(now);\nstartOfYesterday.setDate(startOfYesterday.getDate() - 1);\nstartOfYesterday.setUTCHours(0, 0, 0, 0);\n\nconst endOfYesterday = new Date(now);\nendOfYesterday.setDate(endOfYesterday.getDate() - 1);\nendOfYesterday.setUTCHours(23, 59, 59, 999);\n\nconst startOfLast7Days = new Date(now);\nstartOfLast7Days.setDate(startOfLast7Days.getDate() - 7);\nstartOfLast7Days.setUTCHours(0, 0, 0, 0);\n\nconst startOfPrevWeek = new Date(now);\nstartOfPrevWeek.setDate(startOfPrevWeek.getDate() - 14);\nstartOfPrevWeek.setUTCHours(0, 0, 0, 0);\n\nconst endOfPrevWeek = new Date(now);\nendOfPrevWeek.setDate(endOfPrevWeek.getDate() - 8);\nendOfPrevWeek.setUTCHours(23, 59, 59, 999);\n\n// 🔍 Filter helper\nconst filterByRange = (start, end) =>\n  orders.filter(o => new Date(o.date_created) >= start && new Date(o.date_created) <= end);\n\n// 🧾 Filter orders by period\nconst yesterdayOrders = filterByRange(startOfYesterday, endOfYesterday);\nconst weekOrders = filterByRange(startOfLast7Days, endOfYesterday);\nconst prevWeekOrders = filterByRange(startOfPrevWeek, endOfPrevWeek);\n\n// 💰 Sum revenue helper\nconst sumRevenue = arr => arr.reduce((s, o) => s + parseFloat(o.total || 0), 0);\n\n// 📊 Calculate totals\nconst totalRevenueYesterday = sumRevenue(yesterdayOrders);\nconst totalRevenueWeek = sumRevenue(weekOrders);\nconst totalRevenuePrevWeek = sumRevenue(prevWeekOrders);\n\n// 📈 Calculate growth %\nlet growth = 0;\nif (totalRevenuePrevWeek > 0) {\n  growth = ((totalRevenueWeek - totalRevenuePrevWeek) / totalRevenuePrevWeek * 100).toFixed(1);\n}\n\n// 🛍️ Create product count map for 7-day trend\nconst productCounts = {};\nfor (const order of weekOrders) {\n  if (order.line_items) {\n    for (const item of order.line_items) {\n      productCounts[item.name] = (productCounts[item.name] || 0) + item.quantity;\n    }\n  }\n}\n\n// 🏆 Top 3 products\nconst topProducts = Object.entries(productCounts)\n  .sort((a, b) => b[1] - a[1])\n  .slice(0, 3)\n  .map(([name, qty]) => `${name} (${qty})`)\n  .join(', ') || 'No product data';\n\n// 📅 Create chart data for the last 7 days\nconst last7DaysLabels = [];\nconst last7DaysRevenue = [];\nfor (let i = 6; i >= 0; i--) {\n  const d = new Date(now);\n  d.setDate(d.getDate() - i);\n  const dayStart = new Date(d);\n  dayStart.setUTCHours(0, 0, 0, 0);\n  const dayEnd = new Date(d);\n  dayEnd.setUTCHours(23, 59, 59, 999);\n\n  const dayOrders = orders.filter(o => {\n    const created = new Date(o.date_created);\n    return created >= dayStart && created <= dayEnd;\n  });\n\n  const dayTotal = sumRevenue(dayOrders);\n  last7DaysLabels.push(d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }));\n  last7DaysRevenue.push(dayTotal);\n}\n\n// 🖼️ Generate QuickChart URL (Bar Chart)\nconst chartConfig = {\n  type: 'bar',\n  data: {\n    labels: last7DaysLabels,\n    datasets: [{\n      label: 'Daily Revenue (₹)',\n      backgroundColor: 'rgba(255, 206, 86, 0.7)', // soft yellow\n      borderColor: 'rgba(255, 206, 86, 1)',\n      borderWidth: 1,\n      data: last7DaysRevenue\n    }]\n  },\n  options: {\n    plugins: { legend: { display: false } },\n    scales: { y: { beginAtZero: true } },\n    layout: { padding: 10 }\n  }\n};\n\nconst chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartConfig))}`;\n\n// 🗣️ Voice Summary (for TTS Node)\nconst voiceSummary = `Hello Budding Kids Team! Yesterday, you had ${yesterdayOrders.length} completed orders totaling rupees ${totalRevenueYesterday.toFixed(2)}. \nFor the last seven days, total revenue was rupees ${totalRevenueWeek.toFixed(2)}, showing a ${growth >= 0 ? \"growth\" : \"decline\"} of ${Math.abs(growth)} percent compared to the previous week. \nTop products were: ${topProducts}.`;\n\n// 🧾 Return everything\nreturn [{\n  json: {\n    message: \"Sales Report Summary\",\n    totalOrdersYesterday: yesterdayOrders.length,\n    totalRevenueYesterday: totalRevenueYesterday.toFixed(2),\n    totalOrdersWeek: weekOrders.length,\n    totalRevenueWeek: totalRevenueWeek.toFixed(2),\n    totalRevenuePrevWeek: totalRevenuePrevWeek.toFixed(2),\n    growthPercent: growth,\n    chartUrl,\n    topProducts,\n    voiceSummary\n  }\n}];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        0
+      ],
+      "id": "05056619-d62b-4f1e-acb0-31bb1e1b11fd",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "sendTo": "buddingkids14@gmail.com",
+        "subject": "=Daily Completed Orders Report - {{ new Date().toLocaleDateString('en-IN') }}",
+        "emailType": "text",
+        "message": "={{\n(() => {\nreturn `\nDear Budding Kids Team,\n\n📊 Sales Performance Summary  \n🗓️ Date: ${new Date().toLocaleDateString('en-IN')}\n\n✅ Yesterday’s Orders: ${$json.totalOrdersYesterday}  \n💰 Yesterday’s Revenue: ₹${$json.totalRevenueYesterday}  \n\n📆 Last 7 Days Orders: ${$json.totalOrdersWeek}  \n💵 Last 7 Days Revenue: ₹${$json.totalRevenueWeek}  \n\n📈 Growth vs Previous Week: ${$json.growthPercent}%  \n\n🏆 Top Products: ${$json.topProducts}  \n\n📊 Here’s your 7-day revenue trend:  \n<img src=\"${$json.chartUrl}\" alt=\"Sales Chart\" width=\"420\">\n\nWarm regards,  \nAutomation Assistant 🤖\n`;\n})()\n}}\n\n",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        128,
+        128
+      ],
+      "id": "61bb0ddf-51f9-433b-8d5c-f87f25fd4b97",
+      "name": "Send a message",
+      "webhookId": "525f1f37-171b-4fde-a220-7f0144e31633",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "eeu9HZfWJ9XrV0RL",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "input": "={{$json.voiceSummary}}\n",
+        "options": {
+          "response_format": "mp3",
+          "binaryPropertyOutput": "data"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        128,
+        -80
+      ],
+      "id": "da68138d-23e6-406d-9603-bb44f41179f0",
+      "name": "Generate audio",
+      "credentials": {
+        "openAiApi": {
+          "id": "9AJjpkDyzoF2Sbp7",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendAudio",
+        "chatId": "1066365808",
+        "binaryData": true,
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        336,
+        -80
+      ],
+      "id": "34a9c6c9-fa58-4217-89aa-5feb672d3c13",
+      "name": "Send an audio file",
+      "webhookId": "6bac1138-06a1-45d6-bcfe-4d2591b78e1b",
+      "credentials": {
+        "telegramApi": {
+          "id": "TFPXk4Zc7eYHFXBo",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get many orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many orders": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Generate audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        []
+      ]
+    },
+    "Generate audio": {
+      "main": [
+        [
+          {
+            "node": "Send an audio file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a7d6cf9f-0bdc-47b3-9fa0-1c3bbabe4af9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "43c7b19691f51a3f88ee9b629dd445f165272a5bfe2c0892692a40f0c3bdd981"
+  },
+  "id": "MzqPXJ5qmSvKOO5O",
+  "tags": []
+}
