@@ -1,0 +1,476 @@
+{
+  "name": "Budding kids tracking WF",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -624,
+        -64
+      ],
+      "id": "910d158a-5ba8-4c8a-b5e4-4275d66167fb",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1w75l6-h2WY4lHeN_F3T6FYLRIj9mxI2MpHmJ8LLLtUE",
+          "mode": "list",
+          "cachedResultName": "Budding Kids order",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1w75l6-h2WY4lHeN_F3T6FYLRIj9mxI2MpHmJ8LLLtUE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1382016532,
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1w75l6-h2WY4lHeN_F3T6FYLRIj9mxI2MpHmJ8LLLtUE/edit#gid=1382016532"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Shipping Status",
+              "lookupValue": "Dispatched"
+            },
+            {
+              "lookupColumn": "Tracking Sent"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -416,
+        -64
+      ],
+      "id": "af907521-d420-49f4-bc85-0307dfee8698",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "VTjKBGHNtDeScs88",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{$json[\"Email\"]}}\n",
+        "subject": "=Your BuddingKids Order #{{$json[\"OrderID\"]}} is Shipped",
+        "emailType": "text",
+        "message": "=Hi {{$json[\"CustomerName\"]}},  Good news! Your order #{{$json[\"OrderID\"]}} has been shipped.  📦 Courier: {{$json[\"Courier\"]}} 🔢 Tracking No: {{$json[\"TrackingNo\"]}}  Shipping Address: {{$json[\"Address\"]}}  \n\nThank you for trusting BuddingKids 💜 — Team BuddingKids",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -48,
+        -80
+      ],
+      "id": "8ba506dc-2951-470c-a7d7-cb1d577ddb26",
+      "name": "Send a message",
+      "webhookId": "47c2ee79-d633-43e0-91e7-c6fea90f9fe6",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "eeu9HZfWJ9XrV0RL",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare Dispatch: filter dispatched rows with empty Tracking Sent; normalize fields\nconst out = [];\n\nfunction pick(row, variants){\n  for (const k of variants) {\n    if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') {\n      return String(row[k]).trim();\n    }\n  }\n  return '';\n}\n\nfor (let i = 0; i < items.length; i++) {\n  const row = items[i].json;\n\n  // shipping status (variants)\n  const shippingStatus = (pick(row, ['Shipping Status','Order status','Order Status','Shipping Staus','Status']) || '').toLowerCase();\n  if (shippingStatus !== 'dispatched') continue;\n\n  // skip if already sent\n  const trackingSent = (pick(row, ['Tracking Sent','TrackingSent','Tracking_Sent']) || '').toLowerCase();\n  if (trackingSent === 'yes' || trackingSent === 'notified') continue;\n\n  // normalize fields (handles header variants and trailing spaces)\n  const OrderID = pick(row, ['Order ID','OrderID','orderId','Number']);\n  const CustomerName = pick(row, ['Customer Name ','Customer Name','Name','customerName']);\n  const Email = pick(row, ['Email','email','E-mail','Customer Email']);\n  const Phone = pick(row, ['Phone','phone','Mobile']);\n  const Courier = pick(row, ['Courier','courier']);\n  const TrackingNo = pick(row, ['Tracking No','TrackingNo','Tracking','tracking']);\n  const Address = pick(row, ['Address','address']);\n  \n  // pad required field check\n  if(!Email || !OrderID) continue; // skip rows missing key info\n\n  out.push({\n    json: {\n      OrderID,\n      CustomerName,\n      Email,\n      Phone,\n      Courier,\n      TrackingNo,\n      Address,\n      SentAt: (new Date()).toISOString()\n    }\n  });\n}\n\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        -64
+      ],
+      "id": "2b5d12da-5ab2-4ebe-b64a-4999c5e17a78",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1w75l6-h2WY4lHeN_F3T6FYLRIj9mxI2MpHmJ8LLLtUE",
+          "mode": "list",
+          "cachedResultName": "Budding Kids order",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1w75l6-h2WY4lHeN_F3T6FYLRIj9mxI2MpHmJ8LLLtUE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1382016532,
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1w75l6-h2WY4lHeN_F3T6FYLRIj9mxI2MpHmJ8LLLtUE/edit#gid=1382016532"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Order ID",
+              "lookupValue": "={{ $('Code').item.json.OrderID }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        128,
+        -64
+      ],
+      "id": "6203eaed-5e33-4471-9843-a863fe418475",
+      "name": "Get row(s) in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "VTjKBGHNtDeScs88",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f84e6f0d-5f88-4660-9104-705c3e205465",
+              "leftValue": "{{$node[\"Find Order by ID\"].json[\"row_number\"]}}\n",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        336,
+        -64
+      ],
+      "id": "6d33ecfc-079d-4eeb-a7ab-0b1e27fb0eb9",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1w75l6-h2WY4lHeN_F3T6FYLRIj9mxI2MpHmJ8LLLtUE",
+          "mode": "list",
+          "cachedResultName": "Budding Kids order",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1w75l6-h2WY4lHeN_F3T6FYLRIj9mxI2MpHmJ8LLLtUE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1382016532,
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1w75l6-h2WY4lHeN_F3T6FYLRIj9mxI2MpHmJ8LLLtUE/edit#gid=1382016532"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "Tracking Sent": "Yes",
+            "Tracking sent date": "={{ new Date().toISOString().split(\"T\")[0] }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Customer Name ",
+              "displayName": "Customer Name ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Address",
+              "displayName": "Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": " Products",
+              "displayName": " Products",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": " Total",
+              "displayName": " Total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Payment",
+              "displayName": "Payment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Order Date",
+              "displayName": "Order Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Order status",
+              "displayName": "Order status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Courier",
+              "displayName": "Courier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tracking No",
+              "displayName": "Tracking No",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Shipping Status",
+              "displayName": "Shipping Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "City ",
+              "displayName": "City ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "State",
+              "displayName": "State",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tracking Sent",
+              "displayName": "Tracking Sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tracking sent date",
+              "displayName": "Tracking sent date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        544,
+        -160
+      ],
+      "id": "a9badb28-eaa1-4777-9d5a-4c2f82eaccd4",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "VTjKBGHNtDeScs88",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "93e82e34-ca76-4dbb-974e-bab03f87caea",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "43c7b19691f51a3f88ee9b629dd445f165272a5bfe2c0892692a40f0c3bdd981"
+  },
+  "id": "yJ0iPVSdlw9Z1fRS",
+  "tags": []
+}
