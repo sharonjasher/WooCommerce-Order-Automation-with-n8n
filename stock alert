@@ -1,0 +1,216 @@
+{
+  "name": "stock alert budding kids",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "low-stock-check",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -688,
+        32
+      ],
+      "id": "87e397cf-4ef6-4a10-892d-3bb092351b89",
+      "name": "Webhook",
+      "webhookId": "795fa6f7-2190-474b-84cd-2ed94c30826d"
+    },
+    {
+      "parameters": {
+        "url": "https://buddingkids.com/wp-json/wc/v3/products?per_page=100&status=publish",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -480,
+        32
+      ],
+      "id": "c4194307-a1d0-44bd-9c44-28662d03b4a3",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "OVDa2EdHAeHyQpvL",
+          "name": "stock alert"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Low stock threshold\nconst threshold = 10;\n\n// Filter products that manage stock and have low quantity\nconst lowStockProducts = items\n  .map(item => item.json)\n  .filter(p => p.manage_stock === true && p.stock_quantity !== null && p.stock_quantity < threshold)\n  .map(p => ({\n    id: p.id,\n    name: p.name,\n    sku: p.sku || \"N/A\",\n    stock_quantity: p.stock_quantity,\n    permalink: p.permalink\n  }));\n\nreturn lowStockProducts.map(p => ({ json: p }));\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        32
+      ],
+      "id": "cb0c4666-bdeb-44cb-8467-8bc6ffaadeab",
+      "name": "Filter low stock"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "549fa326-9b07-41c4-9ea9-6c62dcf7ca5a",
+              "leftValue": "={{ $items().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -64,
+        32
+      ],
+      "id": "2e8a811c-fc04-4e40-8ffb-3c7422777feb",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "sendTo": "sharon.inbarani@gmail.com",
+        "subject": "={{ $json.subject }}\n",
+        "message": "={{ $json.body_html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        400,
+        16
+      ],
+      "id": "6295487a-e622-491b-a116-f2982434c7e0",
+      "name": "Send a message",
+      "webhookId": "961f7438-a896-4655-83d6-9e302a230414",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "eeu9HZfWJ9XrV0RL",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e9203c91-1632-4906-8567-454b9fdff695",
+              "name": "subject",
+              "value": "={{(() => {\n  const lowStock = $input.all().flatMap(i => i.json);\n  const first = lowStock[0]?.name || 'Product';\n  return `Low Stock Alert — ${first} | BuddingKids`;\n})()}}\n\n",
+              "type": "string"
+            },
+            {
+              "id": "cc23f7f7-5106-4af8-aae4-adc2ebfb76de",
+              "name": "body_html",
+              "value": "={{(() => {\n  const products = $input.all().flatMap(i => i.json);\n  const logoUrl = 'https://buddingkids.com/wp-content/uploads/2024/01/cropped-Sharon-Budding-Kids-logo.jpg'; // ✅ Your live logo\n  const accentColor = '#6a00ff'; // Purple\n  const highlight = '#ff4fa6';  // Pink\n\n  if (!products || products.length === 0) {\n    return `\n      <div style=\"font-family:Arial,Helvetica,sans-serif;background:#fafafa;padding:30px;text-align:center;\">\n        <img src=\"${logoUrl}\" alt=\"BuddingKids Logo\" style=\"max-width:220px;margin-bottom:20px;\">\n        <h2 style=\"color:${accentColor};\">Low Stock Alert 🚨</h2>\n        <p style=\"color:#555;\">All products currently have sufficient stock.</p>\n        <p style=\"font-size:12px;color:#aaa;margin-top:30px;\">&copy; ${new Date().getFullYear()} BuddingKids.com</p>\n      </div>`;\n  }\n\n  const rows = products.map(p => `\n    <tr>\n      <td style=\"padding:12px;border-bottom:1px solid #eee;\">${p.name}</td>\n      <td style=\"padding:12px;text-align:center;border-bottom:1px solid #eee;\">${p.stock_quantity ?? 'N/A'}</td>\n      <td style=\"padding:12px;text-align:center;border-bottom:1px solid #eee;\">\n        <a href=\"${p.permalink}\" target=\"_blank\" style=\"color:${accentColor};text-decoration:none;font-weight:bold;\">View</a>\n      </td>\n    </tr>\n  `).join('');\n\n  return `\n  <div style=\"font-family:Arial,Helvetica,sans-serif;background:#f8f8f8;padding:20px;\">\n    <div style=\"max-width:640px;margin:auto;background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.1);overflow:hidden;\">\n      <div style=\"background:#ffffff;padding:25px;text-align:center;border-bottom:3px solid ${highlight};\">\n        <img src=\"${logoUrl}\" alt=\"BuddingKids Logo\" style=\"max-width:220px;\">\n      </div>\n\n      <div style=\"padding:25px;\">\n        <h2 style=\"color:${accentColor};margin-bottom:10px;\">Low Stock Alert 🚨</h2>\n        <p style=\"color:#333;margin-bottom:20px;\">The following product(s) are below <strong>10 units</strong>:</p>\n\n        <table style=\"width:100%;border-collapse:collapse;font-size:15px;\">\n          <thead style=\"background:#f3f0ff;\">\n            <tr>\n              <th style=\"text-align:left;padding:10px;\">Product</th>\n              <th style=\"text-align:center;padding:10px;\">Stock</th>\n              <th style=\"text-align:center;padding:10px;\">Link</th>\n            </tr>\n          </thead>\n          <tbody>${rows}</tbody>\n        </table>\n\n        <p style=\"margin-top:25px;color:#555;\">Please restock soon to prevent running out of inventory.</p>\n      </div>\n\n      <div style=\"background:#f5f5f5;padding:15px;text-align:center;font-size:12px;color:#888;\">\n        &copy; ${new Date().getFullYear()} <a href=\"https://buddingkids.com\" style=\"color:${accentColor};text-decoration:none;\">BuddingKids.com</a> — Automated Inventory Notification\n      </div>\n    </div>\n  </div>`;\n})()}}\n\n",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        192,
+        16
+      ],
+      "id": "8829d5eb-0cf0-483d-8555-57e4ebf63434",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Filter low stock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter low stock": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "8661454a-4259-47b8-a56a-c38779bbec81",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "43c7b19691f51a3f88ee9b629dd445f165272a5bfe2c0892692a40f0c3bdd981"
+  },
+  "id": "cKN2qIxJUEa9cdYf",
+  "tags": []
+}
